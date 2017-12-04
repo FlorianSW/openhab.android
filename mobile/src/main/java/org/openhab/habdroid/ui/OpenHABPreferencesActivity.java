@@ -27,8 +27,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 
-import java.text.DateFormat;
-
 import com.google.android.gms.analytics.GoogleAnalytics;
 
 import org.openhab.habdroid.BuildConfig;
@@ -37,12 +35,15 @@ import org.openhab.habdroid.util.Constants;
 import org.openhab.habdroid.util.Util;
 
 import java.security.cert.X509Certificate;
+import java.text.DateFormat;
 
 /**
  * This is a class to provide preferences activity for application.
  */
 
 public class OpenHABPreferencesActivity extends AppCompatActivity {
+    private static final String TAG_NESTED = "TAG_NESTED";
+
 	@Override
 	public void onStart() {
 		super.onStart();
@@ -91,19 +92,24 @@ public class OpenHABPreferencesActivity extends AppCompatActivity {
         Util.overridePendingTransition(this, true);
     }
 
+    public void onConnectionSubScreenOpened() {
+        getFragmentManager().beginTransaction().replace(R.id.prefs_container, new ConnectionSettingsFragment(), TAG_NESTED).addToBackStack(TAG_NESTED).commit();
+    }
+
     public static class SettingsFragment extends PreferenceFragment {
         @Override
         public void onCreate(@Nullable Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
 
+            updateAndInitPreferences();
+        }
+
+        protected void updateAndInitPreferences() {
             addPreferencesFromResource(R.xml.preferences);
 
-            initEditorPreference(Constants.PREFERENCE_URL, R.string.settings_openhab_url_summary, false);
             initEditorPreference(Constants.PREFERENCE_ALTURL, R.string.settings_openhab_alturl_summary, false);
             initEditorPreference(Constants.PREFERENCE_USERNAME, 0, false);
-            initEditorPreference(Constants.PREFERENCE_LOCAL_USERNAME, 0, false);
             initEditorPreference(Constants.PREFERENCE_PASSWORD, 0, true);
-            initEditorPreference(Constants.PREFERENCE_LOCAL_PASSWORD, 0, true);
 
             Preference versionPreference = getPreferenceScreen().findPreference("default_openhab_appversion");
             versionPreference.setSummary(BuildConfig.VERSION_NAME
@@ -112,6 +118,15 @@ public class OpenHABPreferencesActivity extends AppCompatActivity {
             final Preference sslClientCert = getPreferenceScreen().findPreference(Constants.PREFERENCE_SSLCLIENTCERT);
             final Preference sslClientCertHowTo = getPreferenceScreen().findPreference(Constants.PREFERENCE_SSLCLIENTCERT_HOWTO);
             final Preference altUrlPreference = getPreferenceScreen().findPreference(Constants.PREFERENCE_ALTURL);
+
+            final Preference subScreenLocalConn = getPreferenceScreen().findPreference(Constants.SUBSCREEN_LOCAL_CONNECTION);
+            subScreenLocalConn.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    ((OpenHABPreferencesActivity)getActivity()).onConnectionSubScreenOpened();
+                    return false;
+                }
+            });
 
             updateSslClientCertSummary(sslClientCert);
 
@@ -184,7 +199,7 @@ public class OpenHABPreferencesActivity extends AppCompatActivity {
                     ? getString(summaryFormatResId, newValue) : newValue);
         }
 
-        private void initEditorPreference(String key, @StringRes final int summaryFormatResId,
+        protected void initEditorPreference(String key, @StringRes final int summaryFormatResId,
                                           final boolean isPassword) {
             Preference pref = getPreferenceScreen().findPreference(key);
             pref.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
@@ -227,6 +242,17 @@ public class OpenHABPreferencesActivity extends AppCompatActivity {
                     }
                 }
             }.execute(sslClientCert);
+        }
+    }
+
+    public static class ConnectionSettingsFragment extends SettingsFragment {
+        @Override
+        protected void updateAndInitPreferences() {
+            addPreferencesFromResource(R.xml.local_connection_preferences);
+
+            initEditorPreference(Constants.PREFERENCE_URL, R.string.settings_openhab_url_summary, false);
+            initEditorPreference(Constants.PREFERENCE_LOCAL_USERNAME, 0, false);
+            initEditorPreference(Constants.PREFERENCE_LOCAL_PASSWORD, 0, true);
         }
     }
 }
